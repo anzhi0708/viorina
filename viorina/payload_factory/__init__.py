@@ -1,7 +1,7 @@
-from viorina.descriptors import Text, Integer, Float
+from .viorina_base import viorina, Attribute
 
 
-class PayloadFactory:
-
-    # TODO
-    pass
+__all__ = (
+    "viorina",
+    "Attribute"
+)

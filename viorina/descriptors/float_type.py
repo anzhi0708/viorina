@@ -31,3 +31,6 @@ class Float(FloatTypeDescriptor):
 
     def __set__(self, obj, value):
         raise AttributeError("this is a read-only random float field")
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(min_value={self.min_value}, max_value={self.max_value}, min_decimal_places={self.min_decimal_places}, max_decimal_places={self.max_decimal_places})"

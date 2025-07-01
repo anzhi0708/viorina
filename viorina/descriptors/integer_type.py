@@ -31,3 +31,6 @@ class Integer(IntegerTypeDescriptor):
         raise AttributeError(
             "Cannot set value; this is a read-only random integer field."
         )
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(min_value={self.min_value}, max_value={self.max_value})"

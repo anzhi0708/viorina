@@ -1,10 +1,13 @@
-from typing import Protocol, Any
+from typing import Protocol, runtime_checkable
 
 
+@runtime_checkable
 class ViorinaDescriptor[T](Protocol):
     def get_value(self) -> T: ...
+    def __repr__(self) -> str: ...
 
 
+@runtime_checkable
 class TextTypeDescriptor(ViorinaDescriptor[str], Protocol):
     """
     A text field.
@@ -15,6 +18,7 @@ class TextTypeDescriptor(ViorinaDescriptor[str], Protocol):
     def regex_generate(self) -> str: ...
 
 
+@runtime_checkable
 class IntegerTypeDescriptor(ViorinaDescriptor[int], Protocol):
     """
     An integer field.
@@ -24,6 +28,7 @@ class IntegerTypeDescriptor(ViorinaDescriptor[int], Protocol):
     min_value: int
 
 
+@runtime_checkable
 class FloatTypeDescriptor(ViorinaDescriptor[float], Protocol):
     """
     A floating number field.
