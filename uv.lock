@@ -1,0 +1,20 @@
+version = 1
+revision = 2
+requires-python = ">=3.13"
+
+[[package]]
+name = "regex-generate-py"
+version = "2023.3.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/73/f3/e53f913f5c6fe8f90c21cf2bf4b61a19a24566bed0ed913f7bfefeffc44d/regex_generate_py-2023.3.7.tar.gz", hash = "sha256:109663ffa4ae1b577789ea7dcff17bdd39bf02ec51bfe00a6748ff13195d09ac", size = 6039, upload-time = "2024-10-19T04:22:32.699Z" }
+
+[[package]]
+name = "viorina"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "regex-generate-py" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "regex-generate-py", specifier = ">=2023.3.7" }]
