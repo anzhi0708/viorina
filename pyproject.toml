@@ -7,3 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "regex-generate-py>=2023.3.7",
 ]
+[tool.pyrefly]
+python-interpreter = "./.venv/bin/python"
+project-includes = ["**/*"]
+project-excludes = ["**/*venv/**/*"]

@@ -2,14 +2,17 @@ import random
 
 from .descriptor_basics import IntegerTypeDescriptor
 
+
 class Integer(IntegerTypeDescriptor):
-    '''
+    """
     Describes an interger field for a field.
     Integers has these properties:
     - Min value (defaults to 0)
     - Max value (defaults to 9999)
-    '''
-    def __init__(self, 
+    """
+
+    def __init__(
+        self,
         min_value: int = 0,
         max_value: int = 9999,
     ):
@@ -20,11 +23,11 @@ class Integer(IntegerTypeDescriptor):
 
     def get_value(self):
         return random.randint(self.min_value, self.max_value)
-        
+
     def __get__(self, obj, tp):
         return self.get_value()
 
     def __set__(self, obj, value):
-        raise AttributeError("Cannot set value; this is a read-only random integer field.")
-
-    
+        raise AttributeError(
+            "Cannot set value; this is a read-only random integer field."
+        )
