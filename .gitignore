@@ -1,0 +1,12 @@
+__pycache__/
+.venv
+build/
+dist/
+test*
+testing*
+.ruff_cache/
+*.so
+.ipynb_checkpoints
+*.py[codz]
+*.egg-info/
+*.egg
