@@ -1,2 +1,2 @@
-from .payload_factory import viorina, Attribute
+from .payload_factory import Viorina, ViorinaAttribute
 from .descriptors import Text, Integer, Float

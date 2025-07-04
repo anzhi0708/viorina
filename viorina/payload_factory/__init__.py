@@ -1,7 +1,7 @@
-from .viorina_base import viorina, Attribute
+from .viorina_base import Viorina, ViorinaAttribute
 
 
 __all__ = (
-    "viorina",
-    "Attribute"
+    "Viorina",
+    "ViorinaAttribute"
 )
