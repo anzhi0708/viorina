@@ -1,41 +1,65 @@
-from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Any, TypedDict
 import inspect
 
 from viorina.descriptors.descriptor_basics import ViorinaDescriptor
 
 
+class NodeSchema(TypedDict):
+    attrs: dict[str, Any]
+    children: dict[type, "NodeSchema"]
+
+
 class Auto(ViorinaDescriptor):
+    """
+
+    ```python
+    @app.payload
+    class Node:
+        name = Text(regex=...)
+        ChildNode = Auto()  # class `ChildNode` will have parent node `Node`
+
+    # A node can have multiple parent nodes
+    @app.payload
+    class AnotherNode:
+        ChildNode = Auto()  # class `ChildNode` will add a parent node `AnotherNode`
+
+    @app.payload
+    class ChildNode:
+        data = ...
+    ```
+
+    This class will provide:
+    - Qualname for child node (via `self.class_name`)
+    - Qualname for parent node (via `self.parent_name`)
+
+    """
 
     def __init__(self) -> None:
-        self.relationships: dict = {}
+        self.class_name: Optional[str] = None  # Attribute name
+        self.class_handler: Optional[type] = None  # ???
+        self.annotation_type: Optional[type] = None
+        self.parent_class: Optional[type] = None
 
-    def __set_name__(self, obj, name):
-        ann: dict = inspect.get_annotations(obj, eval_str=True)
-        tp: Optional[type] = ann.get(name)
-        if tp is None:  # If no annotation provided, then see it as a reference to other user-defined class
-            pass
-        raise NotImplementedError("TODO")
-            
+    def __set_name__(self, parent_class: type, class_name: str):
+        self.parent_class = parent_class
+        self.class_name = class_name
+        annotation = inspect.get_annotations(self.parent_class, eval_str=True)
+        self.annotation_type = annotation.get(self.class_name)
 
-@dataclass
-class Attribute:
-    name: str
-    annotation: Optional[type]
-    value: ViorinaDescriptor
-
-    def to_dict(self) -> dict:
-        return {
-            "name": self.name,
-            "annotation": self.annotation,
-            "value": self.value
-        }
-
-
-class ViorinaAttribute(Attribute): ...
-
-
-class NonViorinaAttribute(Attribute): ...
+    def __get__(self, instance, owner_type) -> Optional[type]:
+        app: Optional[Viorina] = getattr(self.parent_class, "__viorina_app__", None)
+        if app is None:
+            raise RuntimeError(
+                f"{self.parent_class} is not associated with any Viorina instances"
+            )
+        if not self.class_name:
+            raise RuntimeError("self.class_name not initialized")
+        handler = app.get_type_handler_by_name(self.class_name)
+        if handler is None:
+            raise LookupError(
+                f"Could not find child node {self.class_name!r} in registered types"
+            )
+        return handler
 
 
 class Viorina:
@@ -44,7 +68,7 @@ class Viorina:
     ```python
     from viorina.descriptors import Text, Float
     from viorina.payload_factory import Auto, List, Viorina
-    
+
 
     app = Viorina()
 
@@ -52,7 +76,7 @@ class Viorina:
     class Root:  # class name `Root` will be translated into element/node/key.
         '''
         This will generate something like:
-        
+
         ```xml
         <Root>
             <OrderInfo>
@@ -85,41 +109,72 @@ class Viorina:
     app.build_xml()  # or `root.build_json()`
     ```
     """
+
     def __init__(self) -> None:
-        self.__elements: dict[str, list[Attribute]] = {}
+        self.__registered_types: dict[str, type] = {}
+        self.__edges: set[tuple[type, type]] = set()
+        self.__pending_edges: set[tuple[type, str]] = set()
 
-    def payload(self, cls) -> type:
-        """
-        A class decorator for designing payload schema.
-        """
-        cls.__viorina_children__ = []
-        
-        # Initialize a node/element/field
-        if cls.__qualname__ not in self.__elements.keys():
-            self.__elements[cls.__qualname__] = []
-            
-        for name, value in cls.__dict__.items():
-            if name.startswith("__"):  # Skip if it's private
-                continue
+    def _resolve_edges(self) -> None:
+        if not self.__pending_edges:
+            return
+        for parent, child_name in list(self.__pending_edges):
+            child_type_handler = self.get_type_handler_by_name(child_name)
+            if child_type_handler:
+                self.add_edge(parent, child_type_handler)
+                self.__pending_edges.remove((parent, child_name))
 
-            if isinstance(value, ViorinaDescriptor):
-                element = \
-                    ViorinaAttribute(
-                        name = name,
-                        value = value,
-                        annotation = inspect.get_annotations(cls, eval_str=True).get(name)
-                    )
-            else:
-                element = \
-                    NonViorinaAttribute(
-                        name = name,
-                        value = value,
-                        annotation = inspect.get_annotations(cls, eval_str=True).get(name)
-                    )
+    def add_edge(self, parent: type, child: type) -> None:
+        self.__edges.add((parent, child))
 
-            self.__elements[cls.__qualname__].append(element)
+    def add_pending_edge(self, pending: tuple[type, str]) -> None:
+        self.__pending_edges.add(pending)
+
+    def build_tree(self) -> dict[type, NodeSchema]:
+        self._resolve_edges()
+
+        children_handlers = {c for _, c in self.__edges}
+        root_handlers = [
+            v for v in self.__registered_types.values() if v not in children_handlers
+        ]
+
+        def sub_tree(cls: type) -> NodeSchema:
+            attrs: dict[str, Any] = {}
+            children: dict[type, Any] = {}
+
+            for name, val in cls.__dict__.items():
+
+                # (1) Reference to other user-defined classes
+                if isinstance(val, Auto):
+                    assert val.class_name is not None
+                    child_class_handler = self.__registered_types[val.class_name]
+                    children[child_class_handler] = sub_tree(child_class_handler)
+
+                # (2) Other Viorina descriptors
+                elif isinstance(val, ViorinaDescriptor):
+                    attrs[name] = val
+
+                # (3) Const values
+                elif not name.startswith("__") and not callable(val):
+                    attrs[name] = val
+
+            # return {"attrs": attrs, "children": children}
+            return NodeSchema(attrs=attrs, children=children)
+
+        return {r: sub_tree(r) for r in root_handlers}
+
+    def payload(self, cls):
+        self.__registered_types[cls.__name__] = cls
+        cls.__viorina_app__ = self
+
+        for name, attr in cls.__dict__.items():
+            if isinstance(attr, Auto) and attr.class_name:
+                self.__pending_edges.add((cls, attr.class_name))
 
         return cls
 
-    def inspect(self) -> dict:
-        return self.__elements
+    def get_type_handler_by_name(self, tp_name_str: str) -> Optional[type]:
+        return self.__registered_types.get(tp_name_str)
+
+    def get_registered_types(self) -> dict[str, type]:
+        return self.__registered_types
