@@ -22,7 +22,7 @@ Describe your payload once—Viorina generates compliant, random test data for y
 #### Use `@app.payload` to register
 - Describe your payload structure and call `Viorina.build_dict()` at the end
 ```python
-import viorina  # For `app = viorina.Viorina()`
+import viorina            # For `app = viorina.Viorina()`
 from viorina import Auto  # For describing schema
 
 
