@@ -12,14 +12,14 @@ Light-weight minimal API Fuzzer in Python
 **Viorina** is a minimalist, lightweight API-fuzzing tool.  
 Describe your payload once—Viorina generates compliant, random test data for you.
 
-#### it stays tiny
+#### It stays tiny
 
 * **Declarative schemas** – Register any model with `@Viorina.payload` (FastAPI-style, zero boiler-plate).  
 * **Descriptor magic** – Python’s descriptor protocol auto-wires parent/child fields, so you don’t have to.  
 * **Accurate text fuzzing** – Uses the Rust crate **`regex-generate`** to create strings that match your exact pattern.
 
 # Examples
-#### use `@app.payload` to register
+#### Use `@app.payload` to register
 - Describe your payload structure and call `Viorina.build_dict()` at the end
 ```pycon
 >>> import viorina
@@ -37,14 +37,16 @@ Describe your payload once—Viorina generates compliant, random test data for y
 ...     Age = 233         # => { "BranchA": { "Age": 233 } }
 ...     
 >>> app.build_dict()      # ... build payload
+
 {'Root': 
     {'Name': 'Anji', 
      'BranchA': {'Age': 233}
     }
 }
+
 ```
-#### using descriptors to generate random data for fuzz testing
-- Using `Text`, `Integer`, `Auto` descriptors to generate **random** mocking values
+#### Use descriptors to generate random data for fuzz testing
+- Use `Text`, `Integer`, `Auto` descriptors to generate **random** mocking values
 ```python
 from viorina import Text, Integer, Auto, Viorina
 
@@ -60,7 +62,7 @@ class Root:
 @app.payload
 class SomeNode:
     RandomName = Text(regex=r'[AEIOU][aeiou][rnmlv][aeiou]{2}')
-    ChildNode = Auto()  # class `ChildNode` will have parent node `Node`
+    ChildNode = Auto()
     RandomValue = Integer(min_value=0, max_value=9)
 
 @app.payload
