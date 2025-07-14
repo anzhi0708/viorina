@@ -8,6 +8,7 @@
                                      
 Light-weight minimal API Fuzzer in Python
 ```
+![PyPI](https://img.shields.io/pypi/v/viorina)
 
 **Viorina** is a minimalist, lightweight API-fuzzing tool.  
 Describe your payload once—Viorina generates compliant, random test data for you.
