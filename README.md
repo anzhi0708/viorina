@@ -29,8 +29,8 @@ pip install viorina
 - Describe your payload structure and call `Viorina.build_dict()` at the end
 ```python
 import viorina            # For `app = viorina.Viorina()`
-from viorina import Auto  # For describing schema
-
+from viorina import Auto
+# `Auto`: A placeholder for an attribute whose schema may be defined later. Useful for recursive or deferred schema definitions.
 
 app = viorina.Viorina()
 
@@ -91,6 +91,8 @@ class ChildNode:
 
     ConstValue: int = 233  # A regular integer
 
+
+# -----------------------------------------
 
 if __name__ == "__main__":
     import pprint
