@@ -67,7 +67,7 @@ app = Viorina()
 
 @app.payload
 class Root:
-    SomeNode = Auto()
+    SomeNode = Auto()  # `Auto`: A placeholder for an attribute whose schema may be defined later. Useful for recursive or deferred schema definitions.
     RandomValue = Integer(min_value=233, max_value=235)
 
 
