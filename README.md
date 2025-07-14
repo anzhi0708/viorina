@@ -19,6 +19,11 @@ Describe your payload once—Viorina generates compliant, random test data for y
 * **Descriptor magic** – Python’s descriptor protocol auto-wires parent/child fields, so you don’t have to.  
 * **Accurate text fuzzing** – Uses the Rust crate **`regex-generate`** to create strings that match your exact pattern.
 
+# Installation
+```bash
+pip install viorina
+```
+
 # Examples
 #### Use `@app.payload` to register
 - Describe your payload structure and call `Viorina.build_dict()` at the end
