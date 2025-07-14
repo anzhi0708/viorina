@@ -21,32 +21,37 @@ Describe your payload once—Viorina generates compliant, random test data for y
 # Examples
 #### Use `@app.payload` to register
 - Describe your payload structure and call `Viorina.build_dict()` at the end
-```pycon
->>> import viorina
->>> from viorina import Auto
->>>
->>> app = viorina.Viorina()
->>>
->>> @app.payload
-... class Root:           # ... its child node `BranchA` not defined yet ...
-...     BranchA = Auto()  # => {"Root": { "BranchA": { ... } } }
-...     Name = "Anji"     # => {"Root": { "Name": "Anji", "BranchA": { ... } } }
-...     
->>> @app.payload
-... class BranchA:        # ... the node `BranchA` defined later ...
-...     Age = 233         # => { "BranchA": { "Age": 233 } }
-...     
->>> app.build_dict()      # ... build payload
+```python
+import viorina  # For `app = viorina.Viorina()`
+from viorina import Auto  # For describing schema
 
-{'Root': 
-    {'Name': 'Anji', 
-     'BranchA': {'Age': 233}
-    }
-}
 
+app = viorina.Viorina()
+
+
+# Use `app.payload` to register
+@app.payload
+class Root:           # ... its child node `BranchA` not defined yet ...
+    BranchA = Auto()  # => {"Root": { "BranchA": { ... } } }
+    Name = "Anji"     # => {"Root": { "Name": "Anji", "BranchA": { ... } } }
+    
+
+@app.payload
+class BranchA:        # ... the node `BranchA` defined later ...
+    Age = 233         # => { "BranchA": { "Age": 233 } }
+    
+
+p = app.build_dict()  # ... build payload
+
+# 
+# {'Root': 
+#     {'Name': 'Anji', 
+#      'BranchA': {'Age': 233}
+#     }
+# }
 ```
 #### Use descriptors to generate random data for fuzz testing
-- Use `Text`, `Integer`, `Auto` descriptors to generate **random** mocking values
+- Use `Text`, `Integer`, `Auto` descriptors to generate **random** mock values
 ```python
 from viorina import Text, Integer, Auto, Viorina
 
@@ -59,15 +64,18 @@ class Root:
     SomeNode = Auto()
     RandomValue = Integer(min_value=233, max_value=235)
 
+
 @app.payload
 class SomeNode:
     RandomName = Text(regex=r'[AEIOU][aeiou][rnmlv][aeiou]{2}')
     ChildNode = Auto()
     RandomValue = Integer(min_value=0, max_value=9)
 
+
 @app.payload
 class ChildNode:
     ConstValue: int = 233
+
 
 if __name__ == "__main__":
     import pprint
