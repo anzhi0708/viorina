@@ -200,7 +200,7 @@ class Viorina:
 
                 # (2) Other Viorina descriptors
                 elif isinstance(val, ViorinaDescriptor):
-                    attrs[name] = val
+                    attrs[name] = val.__get__(None, cls)
 
                 # (3) Const values
                 elif not name.startswith("__") and not callable(val):
@@ -296,22 +296,12 @@ class Viorina:
         tree = self.build_tree()
 
         def node_to_dict(ns: NodeSchema) -> dict[str, Any]:
-            # 1) 处理 attrs
-            attrs_out: dict[str, Any] = {}
-            for key, val in ns["attrs"].items():
-                if isinstance(val, ViorinaDescriptor):
-                    attrs_out[key] = f"<{val.__class__.__name__}>"
-                else:
-                    attrs_out[key] = val
+            # 这里 attrs 里已经是最终值，直接拷贝
+            out: dict[str, Any] = dict(ns["attrs"])
 
-            # 2) 递归处理 children
+            # 递归 children
             for child_cls, child_ns in ns["children"].items():
-                attrs_out[child_cls.__name__] = node_to_dict(child_ns)
+                out[child_cls.__name__] = node_to_dict(child_ns)
+            return out
 
-            return attrs_out
-
-        result: dict[str, Any] = {
-            root_cls.__name__: node_to_dict(ns) for root_cls, ns in tree.items()
-        }
-
-        return result
+        return {root.__name__: node_to_dict(ns) for root, ns in tree.items()}
