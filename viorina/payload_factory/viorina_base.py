@@ -4,6 +4,12 @@ import inspect
 from viorina.descriptors.descriptor_basics import ViorinaDescriptor
 
 
+__all__ = (
+    "Auto",
+    "Viorina",
+)
+
+
 class NodeSchema(TypedDict):
     attrs: dict[str, Any]
     children: dict[type, "NodeSchema"]
@@ -11,12 +17,30 @@ class NodeSchema(TypedDict):
 
 class Auto(ViorinaDescriptor):
     """
+    `Auto` is a context-aware descriptor that stores metadata for later resolution.
+
+    For parsing and building correct parent-child relations (a graph),
+    `Auto` collects the parent class(by type handler) and
+    its maybe undefined child class(by class name, in string, through `__set_name__`)
+    and sends them to the Viorina app instance.
+
+    The communication/bind between `Auto` and the `Viorina` singleton app instance is possible
+    because when using `Viorina.payload` decorator to mark a schema definition,
+    the `Viorina` app instance was injected into the schema type.
+
+    By the end of all schema definitions, the `Viorina` app instance will have all the
+    needed type informations, thus resolve-by-class-name-string was made possible
+    (forward declaration/lazy resolution).
+
+    Example:
 
     ```python
-    @app.payload
+    app = Viorina()
+
+    @app.payload            # `Node` class will have `__viorina_app__` set to `app` instance
     class Node:
-        name = Text(regex=...)
-        ChildNode = Auto()  # class `ChildNode` will have parent node `Node`
+        name = Text(regex=r'[A-Z]')
+        ChildNode = Auto()                  # class `ChildNode` will have parent node `Node`
 
     # A node can have multiple parent nodes
     @app.payload
@@ -28,37 +52,56 @@ class Auto(ViorinaDescriptor):
         data = ...
     ```
 
-    This class will provide:
-    - Qualname for child node (via `self.class_name`)
-    - Qualname for parent node (via `self.parent_name`)
-
     """
 
     def __init__(self) -> None:
-        self.class_name: Optional[str] = None  # Attribute name
-        self.class_handler: Optional[type] = None  # ???
-        self.annotation_type: Optional[type] = None
-        self.parent_class: Optional[type] = None
+        """
+        ```
+        @app.payload
+        class ParentClass:
+            ClassName = Auto()  # `Auto` detects `ClassName` and stores it as a string since **typeof ClassName**
+                                # can be undefined during this stage (so that it could not be resolved as a type).
+        ```
+        """
+        self.class_name: Optional[str] = None  # Attribute name, this is a string
+        self.annotation_type: Optional[type] = None  # a type
+        self.parent_class: Optional[type] = None  # also a type
 
     def __set_name__(self, parent_class: type, class_name: str):
+        """
+        Parent-child relationships are detected
+        """
         self.parent_class = parent_class
         self.class_name = class_name
         annotation = inspect.get_annotations(self.parent_class, eval_str=True)
         self.annotation_type = annotation.get(self.class_name)
 
     def __get__(self, instance, owner_type) -> Optional[type]:
+        """
+        Returns the actual resolved type(handler) of a ClassName.
+        """
+        # A `Viorina` app instance uses `payload` method to inject itself to a schema class.
         app: Optional[Viorina] = getattr(self.parent_class, "__viorina_app__", None)
+
         if app is None:
             raise RuntimeError(
                 f"{self.parent_class} is not associated with any Viorina instances"
             )
+
         if not self.class_name:
             raise RuntimeError("self.class_name not initialized")
+
         handler = app.get_type_handler_by_name(self.class_name)
+
+        if handler is None:
+            app._resolve_edges()
+            handler = app.get_type_handler_by_name(self.class_name)
+        
         if handler is None:
             raise LookupError(
-                f"Could not find child node {self.class_name!r} in registered types"
+                f"Could not find type {self.class_name!r} in registered types"
             )
+
         return handler
 
 
@@ -68,7 +111,6 @@ class Viorina:
     ```python
     from viorina.descriptors import Text, Float
     from viorina.payload_factory import Auto, List, Viorina
-
 
     app = Viorina()
 
@@ -112,8 +154,12 @@ class Viorina:
 
     def __init__(self) -> None:
         self.__registered_types: dict[str, type] = {}
-        self.__edges: set[tuple[type, type]] = set()
-        self.__pending_edges: set[tuple[type, str]] = set()
+        self.__edges: set[tuple[type, type]] = (
+            set()
+        )  # Parent-child relationships are stored here
+        self.__pending_edges: set[tuple[type, str]] = (
+            set()
+        )  # When have lazy evaluated types
 
     def _resolve_edges(self) -> None:
         if not self.__pending_edges:
@@ -123,6 +169,8 @@ class Viorina:
             if child_type_handler:
                 self.add_edge(parent, child_type_handler)
                 self.__pending_edges.remove((parent, child_name))
+            else:
+                raise LookupError(f"{child_name!r} is not a registered schema type")
 
     def add_edge(self, parent: type, child: type) -> None:
         self.__edges.add((parent, child))
@@ -143,11 +191,11 @@ class Viorina:
             children: dict[type, Any] = {}
 
             for name, val in cls.__dict__.items():
-
                 # (1) Reference to other user-defined classes
                 if isinstance(val, Auto):
                     assert val.class_name is not None
-                    child_class_handler = self.__registered_types[val.class_name]
+                    child_class_handler = self.get_type_handler_by_name(val.class_name)
+                    assert child_class_handler is not None
                     children[child_class_handler] = sub_tree(child_class_handler)
 
                 # (2) Other Viorina descriptors
@@ -164,7 +212,49 @@ class Viorina:
         return {r: sub_tree(r) for r in root_handlers}
 
     def payload(self, cls):
+        """
+        Registers a class(type), also binds the `Viorina` instance to the type.
+
+        1. User Defined Schema Class That Needs To Be Lazily Resoluted
+
+            Marked with `Viorina.payload` decorator to be registered as a schema type.
+            `Auto`s can be used to refer to other schema types that not yet exist.
+            Registered to (2) and contains multiple (3)s.
+
+        2. Viorina Singleton App Object That Collects All Types At the End
+
+            Holds a bunch of (1)s and will be used by (3) to resolve to actual types.
+
+        3. The `Auto` Descriptor That Carries (1)'s Type Name
+
+            Included within (1) and depends on (2) to resolve actual types.
+
+                ┌───────────────┐
+                │ @app.payload  │
+                │ class Schema: │
+                └───────────────┘
+                 ▲             │ registers
+                 │contained    │ types to
+                 │             ▼
+        ┌───────────┐ ── resolve ─── ┌───────────────┐
+        │ X = Auto()│     lookup     │app = Viorina()│
+        └───────────┘ ─── holds ──── └───────────────┘
+
+        """
+        # Collects the actual type handler
         self.__registered_types[cls.__name__] = cls
+
+        # Injects the app into schema class, can be considered a namespace-like thing
+        # Through the app instance, an actual type can be found using its qualname(in string)
+        # Because an `Auto` can only hold the string representation of a child schema class.
+        #
+        # 1. During class creation `Auto.__set_name__()` stores
+        #    `self.parent_class = ParentSchema`.
+        # 2. On first attribute access, `Auto.__get__()` does:
+        #    app = self.parent_class.__viorina_app__
+        #    handler = app.get_type_handler_by_name            <--- These 2 lines
+        # 3. `app` looks up its registered types and
+        #    gives back the actual type handler.
         cls.__viorina_app__ = self
 
         for name, attr in cls.__dict__.items():
@@ -178,3 +268,50 @@ class Viorina:
 
     def get_registered_types(self) -> dict[str, type]:
         return self.__registered_types
+
+    def build_dict(self) -> dict:
+        """
+        将内部树状结构序列化为层级 JSON 字符串。
+
+        返回示例（假设 Root → OrderInfo → Product）::
+
+            {
+              "Root": {
+                "OrderInfo": {
+                  "HblNo": "<Text>",
+                  "Products": {
+                    "Product": {
+                      "ItemName": "<Text>",
+                      "Price": "<Float>"
+                    }
+                  }
+                }
+              }
+            }
+
+        - ViorinaDescriptor 实例会被转成 ``"<DescriptorClassName>"`` 占位文本；
+        - 常量会原样放入；
+        - ``indent``/``ensure_ascii`` 直接透传给 ``json.dumps``。
+        """
+        tree = self.build_tree()
+
+        def node_to_dict(ns: NodeSchema) -> dict[str, Any]:
+            # 1) 处理 attrs
+            attrs_out: dict[str, Any] = {}
+            for key, val in ns["attrs"].items():
+                if isinstance(val, ViorinaDescriptor):
+                    attrs_out[key] = f"<{val.__class__.__name__}>"
+                else:
+                    attrs_out[key] = val
+
+            # 2) 递归处理 children
+            for child_cls, child_ns in ns["children"].items():
+                attrs_out[child_cls.__name__] = node_to_dict(child_ns)
+
+            return attrs_out
+
+        result: dict[str, Any] = {
+            root_cls.__name__: node_to_dict(ns) for root_cls, ns in tree.items()
+        }
+
+        return result
