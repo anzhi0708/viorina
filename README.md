@@ -12,13 +12,14 @@ Light-weight minimal API Fuzzer in Python
 **Viorina** is a minimalist, lightweight API-fuzzing tool.  
 Describe your payload once—Viorina generates compliant, random test data for you.
 
-#### Why it stays tiny
+#### it stays tiny
 
 * **Declarative schemas** – Register any model with `@Viorina.payload` (FastAPI-style, zero boiler-plate).  
 * **Descriptor magic** – Python’s descriptor protocol auto-wires parent/child fields, so you don’t have to.  
 * **Accurate text fuzzing** – Uses the Rust crate **`regex-generate`** to create strings that match your exact pattern.
 
 # Examples
+#### use `@app.payload` to register
 - Describe your payload structure and call `Viorina.build_dict()` at the end
 ```pycon
 >>> import viorina
@@ -42,6 +43,7 @@ Describe your payload once—Viorina generates compliant, random test data for y
     }
 }
 ```
+#### using descriptors to generate random data for fuzz testing
 - Using `Text`, `Integer`, `Auto` descriptors to generate **random** mocking values
 ```python
 from viorina import Text, Integer, Auto, Viorina
