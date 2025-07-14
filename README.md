@@ -59,6 +59,7 @@ p = app.build_dict()  # ... build payload
 #### Use descriptors to generate random data for fuzz testing
 - Use `Text`, `Integer`, `Auto` descriptors to generate **random** mock values
 ```python
+# Available descriptors: `Float`, `Text`, `Integer`, `Auto`
 from viorina import Text, Integer, Auto, Viorina
 
 
@@ -67,20 +68,28 @@ app = Viorina()
 
 @app.payload
 class Root:
+
     SomeNode = Auto()  # `Auto`: A placeholder for an attribute whose schema may be defined later. Useful for recursive or deferred schema definitions.
+
     RandomValue = Integer(min_value=233, max_value=235)
 
+    # Note: When using `Auto`, the attribute name must correspond to an existing or non-existing Python class that can be registered as a payload.
+    # This allows `Auto` to act as a forward reference to nested or recursive schemas.
 
 @app.payload
 class SomeNode:
-    RandomName = Text(regex=r'[AEIOU][aeiou][rnmlv][aeiou]{2}')
+
+    RandomName = Text(regex=r'[AEIOU][aeiou][rnmlv][aeiou]{2}')  # The `Text` descriptor takes a regex pattern
+
     ChildNode = Auto()
-    RandomValue = Integer(min_value=0, max_value=9)
+
+    RandomValue = Integer(min_value=0, max_value=9)  # The `Integer` descriptor
 
 
 @app.payload
 class ChildNode:
-    ConstValue: int = 233
+
+    ConstValue: int = 233  # A regular integer
 
 
 if __name__ == "__main__":
