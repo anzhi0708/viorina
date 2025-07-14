@@ -99,3 +99,12 @@ if __name__ == "__main__":
 #                        'RandomValue': 1,
 #                        'ChildNode': {'ConstValue': 233}}}}
 ```
+
+### Available Descriptors
+
+| Descriptor                                                               | Description                                                                | Parameters                                                                                   |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `Auto()`                                                                 | Automatically chooses a suitable generator based on type hints or context. | *(No parameters)*                                                                            |
+| `Integer(*, min_value, max_value)`                                       | Generates a random integer within the specified range (inclusive).         | `min_value: int`, `max_value: int`                                                           |
+| `Float(*, min_value, max_value, min_decimal_places, max_decimal_places)` | Generates a floating-point number within the range, with random precision. | `min_value: float`, `max_value: float`, `min_decimal_places: int`, `max_decimal_places: int` |
+| `Text(*, regex)`                                                         | Generates a random string that matches the given regular expression.       | `regex: str`                                                                                 |
