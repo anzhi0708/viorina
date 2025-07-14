@@ -9,8 +9,17 @@
 Light-weight minimal API Fuzzer in Python
 ```
 
+**Viorina** is a minimalist, lightweight API-fuzzing tool.  
+Describe your payload once—Viorina generates compliant, random test data for you.
+
+#### Why it stays tiny
+
+* **Declarative schemas** – Register any model with `@Viorina.payload` (FastAPI-style, zero boiler-plate).  
+* **Descriptor magic** – Python’s descriptor protocol auto-wires parent/child fields, so you don’t have to.  
+* **Accurate text fuzzing** – Uses the Rust crate **`regex-generate`** to create strings that match your exact pattern.
+
 # Examples
-- `Viorina.build_dict()`
+- Describe your payload structure and call `Viorina.build_dict()` at the end
 ```pycon
 >>> import viorina
 >>> from viorina import Auto
@@ -18,19 +27,22 @@ Light-weight minimal API Fuzzer in Python
 >>> app = viorina.Viorina()
 >>>
 >>> @app.payload
-... class Root:
-...     BranchA = Auto()
-...     Name = "Anji"
+... class Root:           # ... its child node `BranchA` not defined yet ...
+...     BranchA = Auto()  # => {"Root": { "BranchA": { ... } } }
+...     Name = "Anji"     # => {"Root": { "Name": "Anji", "BranchA": { ... } } }
 ...     
 >>> @app.payload
-... class BranchA:
-...     Age = 233
+... class BranchA:        # ... the node `BranchA` defined later ...
+...     Age = 233         # => { "BranchA": { "Age": 233 } }
 ...     
->>> app.build_dict()
-{'Root': {'Name': 'Anji', 'BranchA': {'Age': 233}}}
->>> 
+>>> app.build_dict()      # ... build payload
+{'Root': 
+    {'Name': 'Anji', 
+     'BranchA': {'Age': 233}
+    }
+}
 ```
-- Using `Text`, `Integer`, `Auto` descriptors to generate random mocking values
+- Using `Text`, `Integer`, `Auto` descriptors to generate **random** mocking values
 ```python
 from viorina import Text, Integer, Auto, Viorina
 
