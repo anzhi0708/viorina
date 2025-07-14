@@ -57,7 +57,7 @@ p = app.build_dict()  # ... build payload
 # }
 ```
 #### Use descriptors to generate random data for fuzz testing
-- Use `Text`, `Integer`, `Auto` descriptors to generate **random** mock values
+- Use `Float`, `Text`, `Integer`, `Auto` descriptors to generate **random** mock values
 ```python
 # Available descriptors: `Float`, `Text`, `Integer`, `Auto`
 from viorina import Text, Integer, Auto, Viorina
